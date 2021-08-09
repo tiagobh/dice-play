@@ -22,7 +22,6 @@ public class GlobalExceptionHandler {
 
 	@ExceptionHandler(Exception.class)
 	public ResponseEntity<String> doGlobalError(Exception ex) {
-
 		LOGGER.error(ex.getMessage());
 		return new ResponseEntity<>(ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
 	}
