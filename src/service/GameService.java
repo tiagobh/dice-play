@@ -45,8 +45,7 @@ public class GameService {
 		final StatisticsResult statisticsResult = statisticsResultCompletableFuture.get();
 		final List<BetResult> betResults = betResultsCompletableFuture.get();
 
-		final long endTime = System.currentTimeMillis();
-		return buildGameResult(game, startTime, endTime, betResults, statisticsResult);
+		return buildGameResult(game, startTime, betResults, statisticsResult);
 	}
 
 	private List<BetResult> getBetResult(Game game) {
@@ -62,15 +61,15 @@ public class GameService {
 
 	}
 
-	private GameResult buildGameResult(Game game, long startTime, long endTime, List<BetResult> betResults,
+	private GameResult buildGameResult(Game game, long startTime, List<BetResult> betResults,
 			StatisticsResult statisticsResult) {
 
 		GameResult gameResult = new GameResult(game);
-		gameResult.setStartTime(startTime);
-		gameResult.setEndTime(endTime);
 		gameResult.setWins((int) betResults.parallelStream().filter(BetResult::isWin).count());
 		gameResult.setLoses(betResults.size() - gameResult.getWins());
 		gameResult.setStatisticsResult(statisticsResult);
+		gameResult.setStartTime(startTime);
+		gameResult.setEndTime(System.currentTimeMillis());
 		return gameResult;
 	}
 
