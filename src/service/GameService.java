@@ -3,9 +3,13 @@ package service;
 import static java.util.Objects.nonNull;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import model.BetResult;
 import model.Die;
@@ -33,25 +37,36 @@ public class GameService {
 		BetResult result = new BetResult(game);
 		final long startTime = System.currentTimeMillis();
 
-		for (int playIndex = 0; playIndex < game.getBets(); playIndex++) {
-			boolean win = false;
-			List<Integer> rolledNumbers = new ArrayList<>();
+		List<Integer> winsNumbers = Collections.synchronizedList(new ArrayList<>());
+		AtomicInteger winsCount = new AtomicInteger();
+		AtomicInteger loseCount = new AtomicInteger();
 
-			for (int roll = 0; roll < game.getAttempts(); roll++) {
-				final List<Integer> rollDieResult = game.getDice().stream().map(Die::play).collect(Collectors.toList());
-				rolledNumbers.addAll(rollDieResult);
+		IntStream.rangeClosed(1, game.getBets()).parallel().forEach(betNumber -> {
 
-				if (rollDieResult.stream().allMatch(number -> number.equals(game.getLockNumber()))) {
-					result.setWins(result.getWins() + 1);
-					win = true;
+			AtomicBoolean hasWinner = new AtomicBoolean(false);
+			List<Integer> temporaryRolledNumbers = new ArrayList<>();
+
+			IntStream.rangeClosed(1, game.getAttempts()).forEach(attemptNumber -> {
+				final List<Integer> rollDiceResult = game.getDice().stream().map(Die::play).collect(Collectors.toList());
+				temporaryRolledNumbers.addAll(rollDiceResult);
+
+				if (rollDiceResult.stream().allMatch(number -> number.equals(game.getLockNumber()))) {
+					winsCount.getAndIncrement();
+					hasWinner.getAndSet(true);
 				}
-			}
-			if (!win) {
-				result.setLoses(result.getLoses() + 1);
+			});
+
+			if (!hasWinner.get()) {
+				loseCount.getAndIncrement();
 			} else {
-				result.getWinNumbers().addAll(rolledNumbers);
+				winsNumbers.addAll(temporaryRolledNumbers);
 			}
-		}
+		});
+
+		result.setWins(winsCount.get());
+		result.setLoses(loseCount.get());
+		result.setWinNumbers(winsNumbers);
+
 		result.setElapsedTime(TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis() - startTime));
 		return result;
 	}
