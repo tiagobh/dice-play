@@ -1,19 +1,20 @@
 package service;
 
+import static java.util.Collections.synchronizedList;
 import static java.util.Objects.nonNull;
+import static java.util.concurrent.CompletableFuture.supplyAsync;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.IntStream;
 
+import model.Bet;
 import model.BetResult;
-import model.Die;
 import model.Game;
+import model.GameResult;
+import model.StatisticsResult;
 
 public class GameService {
 
@@ -32,44 +33,47 @@ public class GameService {
 		return instance;
 	}
 
-	public BetResult execute(Game game) {
+	public GameResult execute(Game game) throws ExecutionException, InterruptedException {
 
-		BetResult result = new BetResult(game);
 		final long startTime = System.currentTimeMillis();
 
-		List<Integer> winsNumbers = Collections.synchronizedList(new ArrayList<>());
-		AtomicInteger winsCount = new AtomicInteger();
-		AtomicInteger loseCount = new AtomicInteger();
+		CompletableFuture<List<BetResult>> betResultsCompletableFuture = supplyAsync(() -> getBetResult(game));
+		CompletableFuture<StatisticsResult> statisticsResultCompletableFuture = betResultsCompletableFuture.thenComposeAsync(
+				betResults -> StatisticsService.getInstance()
+						.execute(betResults));
+
+		final StatisticsResult statisticsResult = statisticsResultCompletableFuture.get();
+		final List<BetResult> betResults = betResultsCompletableFuture.get();
+
+		final long endTime = System.currentTimeMillis();
+		return buildGameResult(game, startTime, endTime, betResults, statisticsResult);
+	}
+
+	private List<BetResult> getBetResult(Game game) {
+
+		List<BetResult> betResults = synchronizedList(new ArrayList<>());
 
 		IntStream.rangeClosed(1, game.getBets()).parallel().forEach(betNumber -> {
+			betResults.add(
+					BetService.getInstance().execute(new Bet(betNumber, game.getAttempts(), game.getLockNumber(), game.getDice())));
 
-			AtomicBoolean hasWinner = new AtomicBoolean(false);
-			List<Integer> temporaryRolledNumbers = new ArrayList<>();
-
-			IntStream.rangeClosed(1, game.getAttempts()).forEach(attemptNumber -> {
-				final List<Integer> rollDiceResult = game.getDice().stream().map(Die::play).collect(Collectors.toList());
-				temporaryRolledNumbers.addAll(rollDiceResult);
-
-				if (rollDiceResult.stream().allMatch(number -> number.equals(game.getLockNumber()))) {
-					winsCount.getAndIncrement();
-					hasWinner.getAndSet(true);
-				}
-			});
-
-			if (!hasWinner.get()) {
-				loseCount.getAndIncrement();
-			} else {
-				winsNumbers.addAll(temporaryRolledNumbers);
-			}
 		});
+		return betResults;
 
-		result.setWins(winsCount.get());
-		result.setLoses(loseCount.get());
-		result.setWinNumbers(winsNumbers);
-
-		result.setElapsedTime(TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis() - startTime));
-		return result;
 	}
+
+	private GameResult buildGameResult(Game game, long startTime, long endTime, List<BetResult> betResults,
+			StatisticsResult statisticsResult) {
+
+		GameResult gameResult = new GameResult(game);
+		gameResult.setStartTime(startTime);
+		gameResult.setEndTime(endTime);
+		gameResult.setWins((int) betResults.parallelStream().filter(BetResult::isWin).count());
+		gameResult.setLoses(betResults.size() - gameResult.getWins());
+		gameResult.setStatisticsResult(statisticsResult);
+		return gameResult;
+	}
+
 }
 
 

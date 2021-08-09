@@ -1,10 +1,10 @@
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 
-import model.BetResult;
 import model.Die;
 import model.Game;
-import model.StatisticsResult;
+import model.GameResult;
 import service.GameService;
 import service.StatisticsService;
 
@@ -23,12 +23,18 @@ public class main {
 
 		List<Game> games = Arrays.asList(gameOne, gameTwo);
 
+
 		games.parallelStream().forEach(game -> {
-			final BetResult betResult = gameService.execute(game);
-
-			final StatisticsResult gameStatistics = statisticsService.execute(betResult);
-			System.out.println(betResult +" "+ gameStatistics);
-
+			final GameResult gameResult;
+			try {
+				System.out.println("Begin the game: " + game.getName());
+				gameResult = gameService.execute(game);
+				System.out.println(gameResult);
+			} catch (ExecutionException e) {
+				e.printStackTrace();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
 		});
 	}
 }

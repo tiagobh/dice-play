@@ -5,70 +5,22 @@ import java.util.List;
 
 public class BetResult {
 
-	private Game game;
-	private long elapsedTime;
-	private int wins;
-	private int loses;
-	private List<Integer> winNumbers = new ArrayList<>();
+	private boolean isWin;
+	private List<Integer> rollNumbers = new ArrayList<>();
 
-	public BetResult(Game game) {
+	public BetResult(boolean isWin, List<Integer> rollNumbers) {
 
-		this.game = game;
+		this.isWin = isWin;
+		this.rollNumbers = rollNumbers;
 	}
 
-	public int getWins() {
+	public boolean isWin() {
 
-		return wins;
+		return isWin;
 	}
 
-	public void setWins(int wins) {
+	public List<Integer> getRollNumbers() {
 
-		this.wins = wins;
-	}
-
-	public int getLoses() {
-
-		return loses;
-	}
-
-	public void setLoses(int loses) {
-
-		this.loses = loses;
-	}
-
-	public long getElapsedTime() {
-
-		return elapsedTime;
-	}
-
-	public void setElapsedTime(long elapsedTime) {
-
-		this.elapsedTime = elapsedTime;
-	}
-
-	public List<Integer> getWinNumbers() {
-
-		return winNumbers;
-	}
-
-	public void setWinNumbers(List<Integer> winNumbers) {
-
-		this.winNumbers = winNumbers;
-	}
-
-	public Game getGame() {
-
-		return game;
-	}
-
-	@Override
-	public String toString() {
-
-		return "BetResult{" +
-				"\n game= " + game.getName() +
-				",\n elapsedTime(seconds)= " + elapsedTime +
-				",\n wins= " + wins +
-				",\n loses= " + loses +
-				'}';
+		return rollNumbers;
 	}
 }
